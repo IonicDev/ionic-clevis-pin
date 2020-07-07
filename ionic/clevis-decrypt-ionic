@@ -1,0 +1,76 @@
+#!/bin/bash
+
+set -eu
+
+# Copyright (c) 2020 Ionic Security
+# Author: Ionic Security <@email@>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+
+#%# This program takes no options - everything needed to know will be
+#%# read from stdin.
+[ $# -eq 1 ] && [ "${1:-}" = "--summary" ] && exit 2
+
+if [ -t 0 ] ; then
+    echo >&2
+    echo 'Usage: clevis decrypt ionic < JWE > PLAINTEXT' >&2
+    echo >&2
+    exit 1
+fi
+
+#%# The input is concatenated using the dot. Read the first element
+#%# but leave everything else in the buffer. Only read -d can to that.
+read -r -d . hdr64
+#%# The header is base64-encoded. Decode now and also verify this is valid JSON
+if ! hdr="$(jose fmt --quote="$hdr64" --string --b64load --object --output=-)" ; then
+    echo 'JWE header corrupt' >&2
+    exit 1
+fi
+
+#%# Input validation: The pin must exist by name.
+if [ "$(jose fmt --json="$hdr" --get clevis --get pin --unquote=-)" != ionic ] ; then
+    echo 'JWE pin mismatch!' >&2
+    exit 1
+fi
+
+#%# Load the parameters into shell variables.
+if ! devicearg="$(jose fmt --json="$hdr" --get clevis --get ionic --get devicearg --unquote=-)" ; then
+    echo 'JWE missing 'clevis.ionic.devicearg' header parameter!' >&2
+    exit 1
+fi
+if ! kid="$(jose fmt --json="$hdr" --get clevis --get ionic --get kid --unquote=-)" ; then
+    echo 'JWE missing 'clevis.ionic.kid' header parameter!' >&2
+    exit 1
+fi
+
+#%# Possibly some pre-checks on your parameters are needed.
+
+
+#%# Now everything is set up for your pin's business logic
+#%#
+#%# Your job: Somehow bring the key into `jwk`.
+
+# fetch the created Ionic Key and extract its base64 encoded key bytes
+kf="machina $devicearg key fetch -i $kid -s"
+key64=$(eval "${kf}" | awk '/keyData/{gsub(/[",]/,"",$3);print $3}')
+#remove trailing =
+key64=${key64%=}
+# assemble the jwk
+jwk="{\"alg\":\"A256GCM\",\"k\":\"$key64\",\"key_ops\":[\"encrypt\",\"decrypt\"],\"kty\":\"oct\"}"
+
+#%# Finally, forward everything to `jose jwe dec` which does the
+#%# decryption job.
+#( printf '%s' "$jwk$hdr64." ; cat ) | exec jose jwe dec --key=- --input=-
+exec jose jwe dec -k- -i- < <(echo -n "$jwk$hdr64."; /bin/cat)
