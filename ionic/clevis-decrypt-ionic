@@ -3,7 +3,7 @@
 set -eu
 
 # Copyright (c) 2020 Ionic Security
-# Author: Ionic Security <@email@>
+# Author: Ionic Security dev@ionicsecurity.com
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,22 +39,22 @@ if [ "$(jose fmt --json="$hdr" --get clevis --get pin --unquote=-)" != ionic ] ;
     exit 1
 fi
 
-if ! devicearg="$(jose fmt --json="$hdr" --get clevis --get ionic --get devicearg --unquote=-)" ; then
-    echo 'JWE missing 'clevis.ionic.devicearg' header parameter!' >&2
+if ! keyid="$(jose fmt --json="$hdr" --get clevis --get ionic --get keyid --unquote=-)" ; then
+    echo 'JWE missing 'clevis.ionic.keyid' header parameter!' >&2
     exit 1
 fi
-if ! kid="$(jose fmt --json="$hdr" --get clevis --get ionic --get kid --unquote=-)" ; then
-    echo 'JWE missing 'clevis.ionic.kid' header parameter!' >&2
+if ! generaloptions="$(jose fmt --json="$hdr" --get clevis --get ionic --get generaloptions --unquote=-)" ; then
+    echo 'JWE missing 'clevis.ionic.generaloptions' header parameter!' >&2
     exit 1
 fi
 
 # fetch the created Ionic Key and extract its base64 encoded key bytes
-kf="machina $devicearg key fetch -i $kid -s"
+kf="machina $generaloptions key fetch -i $keyid -s"
 key64=$(eval "${kf}" | awk '/keyData/{gsub(/[",]/,"",$3);print $3}')
-#remove trailing =
+#remove trailing = jose dec will fail otherwise
 key64=${key64%=}
 # assemble the jwk
-jwk="{\"alg\":\"A256GCM\",\"k\":\"$key64\",\"key_ops\":[\"encrypt\",\"decrypt\"],\"kty\":\"oct\"}"
+jwk="$(jose jwk gen -i '{"alg":"A256GCM"}' | jose fmt -j- -O -q $key64 -Ss k -Uo-)"
 
 # perform decryption
 exec jose jwe dec -k- -i- < <(echo -n "$jwk$hdr64."; /bin/cat)

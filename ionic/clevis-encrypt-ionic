@@ -3,7 +3,7 @@
 set -eu
 
 # Copyright (c) 2020 Ionic Security
-# Author: Ionic Security <@email@>
+# Author: Ionic Security dev@ionicsecurity.com
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,13 +19,15 @@ set -eu
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 
-SUMMARY='Encrypts using an Ionic policy'
+SUMMARY='Encrypts using an Ionic Key conrolled by Ionic Policy'
 
+# Don't touch, hardcoded in the `clevis` program.
 if [ "${1:-}" = '--summary' ] ; then
     echo "$SUMMARY"
     exit 0
 fi
 
+# Since this script runs in a pipe, *all* operational messages must go to stderr.
 if [ -t 0 ] ; then
     exec >&2
     echo
@@ -35,134 +37,42 @@ if [ -t 0 ] ; then
     echo
     echo 'This command uses the following configuration properties:'
     echo
-    echo '  attributes: <string>   An optional parameter for machina'\''s --attrs flag'
+    echo '  keyid: <string>   A required parameter specifing the Ionic Key to be used for encryption'
     echo
-    echo '  devicetype: <string>   An optional parameter for machina'\''s --devicetype flag'
-    echo
-    echo '  devicefile: <string>   An optional parameter for machina'\''s --devicefile flag'
-    echo
-    echo '  devicepw: <string>   An optional parameter for machina'\''s --devicepw flag'
-    echo
-    echo '  devicehexkey: <string>   An optional parameter for machina'\''s --devicehexkey flag'
-    echo
-    echo '  deviceauth: <string>   An optional parameter for machina'\''s --deviceauth flag'
-    echo
-    echo '  devicehexauth: <string>   An optional parameter for machina'\''s --devicehexauth flag'
+    echo '  generaloptions: <string>   An optional parameter for passing general options to the machina cli'
     echo
     exit 2
 fi
 
+# Ensure CONFIG parameter in $1 contains valid JSON
 if ! cfg="$(jose fmt --json="${1:-}" --object --output=- 2>/dev/null)" ; then
     echo 'Configuration is malformed!' >&2
     exit 1
 fi
 
-# Load the values from the configuration json into shell variables.
-attributes="$(jose fmt --json="$cfg" --object --get attributes --unquote=-)" || attributes=''
-devicetype="$(jose fmt --json="$cfg" --object --get devicetype --unquote=-)" || devicetype=''
-devicefile="$(jose fmt --json="$cfg" --object --get devicefile --unquote=-)" || devicefile=''
-devicepw="$(jose fmt --json="$cfg" --object --get devicepw --unquote=-)" || devicepw=''
-devicehexkey="$(jose fmt --json="$cfg" --object --get devicehexkey --unquote=-)" || devicehexkey=''
-deviceauth="$(jose fmt --json="$cfg" --object --get deviceauth --unquote=-)" || deviceauth=''
-devicehexauth="$(jose fmt --json="$cfg" --object --get devicehexauth --unquote=-)" || devicehexauth=''
-
-# TODO validate attributes param
-
-[ -z "$devicetype" ] && dt=0 || dt=1
-[ -z "$devicefile" ] && df=0 || df=1
-[ -z "$devicepw" ] && dp=0 || dp=1
-[ -z "$devicehexkey" ] && dhk=0 || dhk=1
-[ -z "$deviceauth" ] && da=0 || da=1
-[ -z "$devicehexauth" ] && dha=0 || dha=1
-
-devicearg=''
-
-# Supported device types are 'plaintext', 'password' and 'aesgcm'
-
-if [ -n "$attributes" ]; then
-    attributes="-a $attributes "
+# Load mandatory parameter
+if ! keyid="$(jose fmt --json="$cfg" --object --get keyid --unquote=-)" ; then
+    echo 'Missing the required keyid property!' >&2
+    exit 1
 fi
 
-if [ "$dt" -eq 1 ]
-then
-    if [ "$devicetype" = "plaintext" ] || [ "$devicetype" = "password" ] || [ "$devicetype" = "aesgcm" ]
-    then
-        if [ "$df" -eq 1 ] ;
-        then
-            if [ ! -f "$FILE" ]; then
-                echo 'devicefile configuration is invalid! Specified file does not exist' >&2
-                exit 1
-            fi
-        else
-            echo 'devicefile configuration is invalid! Must be specified when using devicetype' >&2
-            exit 1
-        fi
-        if [ "$devicetype" = "plaintext" ] ; then
-            if [ "$dp" -eq 1 ] || [ "$dhk" -eq 1 ] || [ "$da" -eq 1 ] || [ "$dha" -eq 1 ] ; then
-                echo 'Configuration is invalid! devicetype plaintext only supports devicefile' >&2
-                exit 1
-            fi
-            devicearg="-t plaintext -f $devicefile"
-        fi
-        if [ "$devicetype" = "password" ] ; then
-            if [ ! "$dp" -eq 1 ] ; then
-                echo 'Configuration is invalid! devicetype password requires devicepw' >&2
-                exit 1
-            fi
-            if [ "$dhk" -eq 1 ] || [ "$da" -eq 1 ] || [ "$dha" -eq 1 ] ; then
-                echo 'Configuration is invalid! devicetype plaintext only supports devicefile and devicepw' >&2
-                exit 1
-            fi
-            devicearg="-t password -f $devicefile -p $devicepw"
-        fi
-        if [ "$devicetype" = "aesgcm" ] ; then
-            if [ "$dp" -eq 1 ] ; then
-                echo 'Configuration is invalid! devicetype aesgcm does not support devicepw' >&2
-                exit 1
-            fi
-            if [ ! "$dhk" -eq 1 ] ; then
-                echo 'Configuration is invalid! devicetype aesgcm requires devicehexkey' >&2
-                exit 1
-            fi
-            if [ "$da" -eq 1 ] && [ "$dha" -eq 1 ] ; then
-                echo 'Configuration is invalid! deviceauth and devicehexauth are mutually exclusive' >&2
-                exit 1
-            fi
-            if [ "$da" -eq 1 ] ; then
-                devicearg="-t aesgcm -k $devicehexkey -a $deviceauth"
-            fi
-            if [ "$dha" -eq 1 ] ; then
-                devicearg="-t aesgcm -k $devicehexkey -x $devicehexauth"
-            fi
-        fi
-    else
-        echo 'devicetype configuration is invalid! Supported values are plaintext, password or aesgcm' >&2
-        exit 1
-    fi
-else
-    if [ "$df" -eq 1 ] || [ "$dp" -eq 1 ] || [ "$dhk" -eq 1 ] || [ "$da" -eq 1 ] || [ "$dha" -eq 1 ] ; then
-        echo 'Configuration is invalid! devicetype must be specified if other device* parameters are used' >&2
-        exit 1
-    fi
-fi
-
-# create a new Ionic Key and retain its keyId
-kc="machina $devicearg key create $attributes -s"
-kid=$(eval "${kc}" | awk '/keyId/{gsub(/[",]/,"",$3);print $3}')
+# Load optional parameter
+generaloptions="$(jose fmt --json="$cfg" --object --get generaloptions --unquote=-)" || generaloptions=''
 
 # fetch the created Ionic Key and extract its base64 encoded key bytes
-kf="machina $devicearg key fetch -i $kid -s"
-key64=$(eval "${kf}" | awk '/keyData/{gsub(/[",]/,"",$3);print $3}')
-# remove trailing = from base64 key
+key64="$(machina $generaloptions key fetch -i $keyid -s | jose fmt -j - -O -g keys -A -g 0 -O -g keyData -u -)"
+# remove trailing = from base64 key jose enc will fail otherwise
 key64=${key64%=}
 # assemble the jwk
-jwk="{\"alg\":\"A256GCM\",\"k\":\"$key64\",\"key_ops\":[\"encrypt\",\"decrypt\"],\"kty\":\"oct\"}"
+jwk="$(jose jwk gen -i '{"alg":"A256GCM"}' | jose fmt -j- -O -q $key64 -Ss k -Uo-)"
+
+echo "$jwk" >&2
 
 # Create a skeleton that declares the pin, and creates a store.
 jwe='{"protected":{"clevis":{"pin":"ionic","ionic":{}}}}'
 # Populate the store with the values needed to recreate the jwk
-jwe="$(jose fmt --json="$jwe" --get protected --get clevis --get ionic --quote "$devicearg" --set devicearg -UUUU --output=-)"
-jwe="$(jose fmt --json="$jwe" --get protected --get clevis --get ionic --quote "$kid" --set kid -UUUU --output=-)"
+jwe="$(jose fmt --json="$jwe" --get protected --get clevis --get ionic --quote "$keyid" --set keyid -UUUU --output=-)"
+jwe="$(jose fmt --json="$jwe" --get protected --get clevis --get ionic --quote "$generaloptions" --set generaloptions -UUUU --output=-)"
 
 exec jose jwe enc -i- -k- -I- -c < <(echo -n "$jwe$jwk"; /bin/cat)
 
