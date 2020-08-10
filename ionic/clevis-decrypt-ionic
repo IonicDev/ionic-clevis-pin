@@ -53,6 +53,9 @@ kf="machina $generaloptions key fetch -i $keyid -s"
 key64=$(eval "${kf}" | awk '/keyData/{gsub(/[",]/,"",$3);print $3}')
 #remove trailing = jose dec will fail otherwise
 key64=${key64%=}
+# convert from base64 to base64url encoding
+key64=${key64//+/-}
+key64=${key64//\//_}
 # assemble the jwk
 jwk="$(jose jwk gen -i '{"alg":"A256GCM"}' | jose fmt -j- -O -q $key64 -Ss k -Uo-)"
 
