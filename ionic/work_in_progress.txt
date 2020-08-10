@@ -11,8 +11,8 @@ Using the pin:
 
 Encryption
 
-"clevis encrypt ionic '{}' < <(echo "Hello World") > cyptotext.jwe"
-"clevis encrypt ionic '{}' < plain.txt > cyptotext.jwe"
+"clevis encrypt ionic '{"keyid":"<mykeyid>"}' < <(echo "Hello World") > cyptotext.jwe"
+"clevis encrypt ionic '{"keyid":"<mykeyid>"}' < plain.txt > cyptotext.jwe"
 
 Decryption
 
@@ -22,7 +22,7 @@ Decryption
 
 Additional arguments can be specified inside the JSON field:
 
-ex: {"devicetype":"plaintext","devicefile","path/to/persistor.pt"}
+ex: {"keyid":"<mykeyid>","generaloptions":"-t <devicetype> -f <devicefilepath>"}
 
 
 Remaining work:
