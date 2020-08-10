@@ -61,9 +61,8 @@ generaloptions="$(jose fmt --json="$cfg" --object --get generaloptions --unquote
 
 # fetch the created Ionic Key and extract its base64 encoded key bytes
 key64="$(machina $generaloptions key fetch -i $keyid -s | jose fmt -j - -O -g keys -A -g 0 -O -g keyData -u -)"
-# remove trailing = from base64 key jose enc will fail otherwise
-key64=${key64%=}
 # convert from base64 to base64url encoding
+key64=${key64%=}
 key64=${key64//+/-}
 key64=${key64//\//_}
 # assemble the jwk

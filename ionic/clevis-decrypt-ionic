@@ -51,9 +51,8 @@ fi
 # fetch the created Ionic Key and extract its base64 encoded key bytes
 kf="machina $generaloptions key fetch -i $keyid -s"
 key64=$(eval "${kf}" | awk '/keyData/{gsub(/[",]/,"",$3);print $3}')
-#remove trailing = jose dec will fail otherwise
-key64=${key64%=}
 # convert from base64 to base64url encoding
+key64=${key64%=}
 key64=${key64//+/-}
 key64=${key64//\//_}
 # assemble the jwk
