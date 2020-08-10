@@ -68,9 +68,6 @@ key64=${key64//+/-}
 key64=${key64//\//_}
 # assemble the jwk
 jwk="$(jose jwk gen -i '{"alg":"A256GCM"}' | jose fmt -j- -O -q $key64 -Ss k -Uo-)"
-
-echo "$jwk" >&2
-
 # Create a skeleton that declares the pin, and creates a store.
 jwe='{"protected":{"clevis":{"pin":"ionic","ionic":{}}}}'
 # Populate the store with the values needed to recreate the jwk
