@@ -11,7 +11,7 @@ dracut = dependency('dracut', required: false)
 initramfs_tools = find_program('update-initramfs', required: false)
 
 if curl.found()
-#%# BUild the programs
+#%# Build the programs
   bins += join_paths(meson.current_source_dir(), 'clevis-decrypt-@pin@')
   bins += join_paths(meson.current_source_dir(), 'clevis-encrypt-@pin@')
 #%# and the manpage
