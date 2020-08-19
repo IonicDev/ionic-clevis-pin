@@ -1,5 +1,3 @@
-#%# Of course you should provide some test
-#%#
 #!/bin/sh
 
 #%# Maximum verbosity is desired
