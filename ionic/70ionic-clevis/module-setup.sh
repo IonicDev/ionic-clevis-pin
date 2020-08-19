@@ -19,10 +19,10 @@
 
 depends() {
     echo clevis
-    echo machina
     return 0
 }
 
 install() {
+    inst machina
     inst clevis-decrypt-ionic
 }
