@@ -1,20 +1,21 @@
 # Ionic Clevis Pin
 
-This pin uses Ionic Machina to request an Ionic Policy controlled aes key by its keyid using the
+This pin uses Ionic Machina to request an Ionic Policy controlled AES key by its keyid using the
 machina cli.
 
 ## Dependencies
-This pin required the `clevis` package. This pin also requires the machina cli available
+This pin requires the `clevis` package. This pin also requires the `machina` cli available
 [here](https://dev.ionic.com/tools). If operating inside of a virtual machine it may be necessary
-to install and run the haveged tool to seed sufficient entropy for the machina cli.
+to install and run the [haveged tool](https://github.com/jirka-h/haveged) to seed sufficient entropy
+for the `machina` cli.
 
 ## Installation
 Copy `clevis-encrypt-ionic` and `clevis-decrypt-ionic` to `/usr/bin/` along side the other clevis
 pins.
 
 ### Setup
-Once machina is installed a persistor should be enrolled see
-[here](https://dev.ionic.com/tools/machina/profile_enroll) for details.
+Once `machina` is installed a persistor should be enrolled
+[see here](https://dev.ionic.com/tools/machina/profile_enroll) for details.
 
 ## Usage
 The Ionic keyid must be provided in the JSON configuration for the pin.
