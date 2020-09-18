@@ -16,11 +16,9 @@ clevis-encrypt-ionic - Encrypts using an ionic policy
 The *clevis encrypt ionic* command encrypts using an ionic policy.
 Its only argument is the JSON configuration object.
 
-#%# And so on ...
-
 Encrypting data using the ionic pin works like this:
 
-    $ clevis encrypt ionic '{"@mand1@":"@@","@mand2":"@@"}' < PT > JWE
+    $ clevis encrypt ionic '{"keyid":"<keyid>"}' < PT > JWE
 
 To decrypt the data, just pass it to the *clevis decrypt* command:
 
@@ -30,16 +28,11 @@ To decrypt the data, just pass it to the *clevis decrypt* command:
 
 This command uses the following configuration properties:
 
-#%# Keep this in sync with the short help in clevis-encrypt-@pin@
+* *keyid* (string) :
+  <machina_keyid> (REQUIRED)
 
-* *@mand1@* (string) :
-  @@ (REQUIRED)
-
-* *@mand2@* (string) :
-  @@ (REQUIRED)
-
-* *@opt1@* (string) :
-  @@ (default: @@)
+* *generaloptions* (string) :
+  '-t <devicetype> -f <devicefilepath>' (default: '')
 
 == BUGS
 
