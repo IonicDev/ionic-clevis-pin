@@ -1,0 +1,43 @@
+CLEVIS-ENCRYPT-IONIC(1)
+=======================
+:doctype: manpage
+
+
+== NAME
+
+clevis-encrypt-ionic - Encrypts using an ionic policy
+
+== SYNOPSIS
+
+*clevis encrypt ionic* CONFIG < PT > JWE
+
+== OVERVIEW
+
+The *clevis encrypt ionic* command encrypts using an ionic policy.
+Its only argument is the JSON configuration object.
+
+Encrypting data using the ionic pin works like this:
+
+    $ clevis encrypt ionic '{"keyid":"<keyid>"}' < PT > JWE
+
+To decrypt the data, just pass it to the *clevis decrypt* command:
+
+    $ clevis decrypt < JWE > PT
+
+== CONFIG
+
+This command uses the following configuration properties:
+
+* *keyid* (string) :
+  <machina_keyid> (REQUIRED)
+
+* *generaloptions* (string) :
+  '-t <devicetype> -f <devicefilepath>' (default: '')
+
+== BUGS
+
+In virtual machine environments the machina cli may throw a <errno> error if there is insufficient entropy. This can be remedied with the haveged tool (see: <dev page on haveged>). 
+
+== SEE ALSO
+
+link:clevis-decrypt.1.adoc[*clevis-decrypt*(1)]

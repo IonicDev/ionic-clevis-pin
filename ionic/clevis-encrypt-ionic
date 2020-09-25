@@ -1,0 +1,74 @@
+#!/bin/bash -e
+
+set -eu
+
+# Copyright (c) 2020 Ionic Security
+# Author: Ionic Security dev@ionicsecurity.com
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+
+SUMMARY='Encrypts using an Ionic Key conrolled by Ionic Policy'
+
+# Don't touch, hardcoded in the `clevis` program.
+if [ "${1:-}" = '--summary' ] ; then
+    echo "$SUMMARY"
+    exit 0
+fi
+
+# Since this script runs in a pipe, *all* operational messages must go to stderr.
+if [ -t 0 ] ; then
+    exec >&2
+    echo
+    echo 'Usage: clevis encrypt ionic CONFIG < PLAINTEXT > JWE'
+    echo
+    echo "$SUMMARY"
+    echo
+    echo 'This command uses the following configuration properties:'
+    echo
+    echo '  keyid: <string>   A required parameter specifing the Ionic Key to be used for encryption'
+    echo
+    echo '  generaloptions: <string>   An optional parameter for passing general options to the machina cli'
+    echo
+    exit 2
+fi
+
+# Ensure CONFIG parameter in $1 contains valid JSON
+if ! cfg="$(jose fmt --json="${1:-}" --object --output=- 2>/dev/null)" ; then
+    echo 'Configuration is malformed!' >&2
+    exit 1
+fi
+
+# Load mandatory parameter
+if ! keyid="$(jose fmt --json="$cfg" --object --get keyid --unquote=-)" ; then
+    echo 'Missing the required keyid property!' >&2
+    exit 1
+fi
+
+# Load optional parameter
+generaloptions="$(jose fmt --json="$cfg" --object --get generaloptions --unquote=-)" || generaloptions=''
+
+# fetch the created Ionic Key and extract its base64 encoded key bytes
+key64="$(machina $generaloptions key fetch -i $keyid -s | jose fmt -j - -O -g keys -A -g 0 -O -g keyData -u -)"
+# convert from base64 to base64url encoding
+key64="$(echo $key64 | base64 -d | jose b64 enc -I-)"
+# assemble the jwk
+jwk="$(jose jwk gen -i '{"alg":"A256GCM"}' | jose fmt -j- -O -q $key64 -Ss k -Uo-)"
+# Create a skeleton that declares the pin, and creates a store.
+jwe='{"protected":{"clevis":{"pin":"ionic","ionic":{}}}}'
+# Populate the store with the values needed to recreate the jwk
+jwe="$(jose fmt --json="$jwe" --get protected --get clevis --get ionic --quote "$keyid" --set keyid -UUUU --output=-)"
+jwe="$(jose fmt --json="$jwe" --get protected --get clevis --get ionic --quote "$generaloptions" --set generaloptions -UUUU --output=-)"
+
+exec jose jwe enc -i- -k- -I- -c < <(echo -n "$jwe$jwk"; /bin/cat)
