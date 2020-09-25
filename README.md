@@ -53,4 +53,5 @@ Record the keyid.
 `clevis luks bind -d <device> ionic '{"keyid":"<mykeyid>","generaloptions":"-t <devicetype> -f <devicefilepath>"}`
 
 ## Configure automounting
-Use the [clevis-mount-helper project](link_to_project_here) to configure automounting of luke encrypted devices
+Use the [clevis-mount-helper project](https://github.com/IonicDev/clevis-mount-helper)
+to configure automounting of luks encrypted devices.
